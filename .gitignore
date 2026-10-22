@@ -1,0 +1,31 @@
+.env
+node_modules/
+dist/
+target/
+.DS_Store
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+**/.env
+**/.env.*
+!.env.example
+!.env.sample
+
+# Dependencies and generated files
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+**/coverage/
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/

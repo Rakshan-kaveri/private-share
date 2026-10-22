@@ -1,0 +1,43 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      APP_ORIGIN: ${APP_ORIGIN:-https://share.rakzu.xyz}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+    restart: unless-stopped
+    expose:
+      - "8081"
+    networks: [private-share]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        VITE_ICE_SERVERS_JSON: ${ICE_SERVERS_JSON:-[]}
+    depends_on: [backend]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8188:80"
+    networks: [private-share]
+
+  # TURN runs on the host network so it can advertise routable host addresses.
+  # Requires a public IP and inbound UDP/TCP 3478 plus UDP relay range 49160-49200.
+  coturn:
+    image: coturn/coturn:4.6.3
+    network_mode: host
+    command: >-
+      -n --log-file=stdout --fingerprint --lt-cred-mech --use-auth-secret
+      --static-auth-secret=${TURN_SHARED_SECRET:?Set TURN_SHARED_SECRET in .env}
+      --realm=${TURN_REALM:-share.rakzu.xyz} --listening-port=3478
+      --min-port=49160 --max-port=49200 --no-multicast-peers
+      --no-cli --no-tls --no-dtls --stale-nonce=600
+      --external-ip=${TURN_PUBLIC_IP:?Set TURN_PUBLIC_IP to the publicly reachable server IP}
+    restart: unless-stopped
+    profiles: [turn]
+
+networks:
+  private-share:
+    driver: bridge
