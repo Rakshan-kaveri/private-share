@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SignalHandler extends TextWebSocketHandler {
   private static final int MAX_MESSAGE = 16_384;
   private static final long TRANSFER_TTL_SECONDS = 15 * 60;
-  private static final Set<String> TYPES = Set.of("invite", "accept", "reject", "offer", "answer", "ice", "cancel");
+  private static final Set<String> TYPES = Set.of("invite", "accept", "reject", "offer", "answer", "ice", "cancel", "share");
   private final ObjectMapper mapper = new ObjectMapper();
   private final ConcurrentHashMap<String, WebSocketSession> online = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, String> socketUser = new ConcurrentHashMap<>();
@@ -28,9 +28,11 @@ public class SignalHandler extends TextWebSocketHandler {
 
   private static final class Transfer {
     final String id, sender, recipient;
+    final boolean media;
+    volatile String offerer;
     volatile String state = "INVITED";
     volatile long updated = Instant.now().getEpochSecond();
-    Transfer(String id, String sender, String recipient) { this.id=id; this.sender=sender; this.recipient=recipient; }
+    Transfer(String id, String sender, String recipient, boolean media) { this.id=id; this.sender=sender; this.recipient=recipient; this.media=media; }
     boolean party(String id) { return sender.equals(id) || recipient.equals(id); }
     String other(String id) { return sender.equals(id) ? recipient : sender; }
   }
@@ -77,7 +79,7 @@ public class SignalHandler extends TextWebSocketHandler {
         long active=transfers.values().stream().filter(x->x.party(from) && !"CLOSED".equals(x.state) && now-x.updated<=TRANSFER_TTL_SECONDS).count();
         if(active>=5)return;
         WebSocketSession target=online.get(to); if(target==null||!target.isOpen())return;
-        t=new Transfer(id,from,to); transfers.put(id,t); forward(target,type,from,to,id,n.get("payload"));
+        t=new Transfer(id,from,to,"voice".equals(n.path("payload").path("mediaMode").asText()) || "video".equals(n.path("payload").path("mediaMode").asText()) || "screen".equals(n.path("payload").path("mediaMode").asText())); transfers.put(id,t); forward(target,type,from,to,id,n.get("payload"));
       }
       case "accept" -> {
         if(t==null||!t.recipient.equals(from)||!t.sender.equals(to)||!"INVITED".equals(t.state))return;
@@ -88,15 +90,19 @@ public class SignalHandler extends TextWebSocketHandler {
         t.state="CLOSED";t.updated=now;forward(online.get(t.sender),type,from,to,id,n.get("payload"));
       }
       case "offer" -> {
-        if(t==null||!t.sender.equals(from)||!t.recipient.equals(to)||!"ACCEPTED".equals(t.state))return;
-        t.state="OFFERED";t.updated=now;forward(online.get(t.recipient),type,from,to,id,n.get("payload"));
+        if(t==null||!t.party(from)||!t.other(from).equals(to)||!("ACCEPTED".equals(t.state) && t.sender.equals(from) || t.media && "CONNECTED".equals(t.state)))return;
+        t.offerer=from;t.state="OFFERED";t.updated=now;forward(online.get(to),type,from,to,id,n.get("payload"));
       }
       case "answer" -> {
-        if(t==null||!t.recipient.equals(from)||!t.sender.equals(to)||!"OFFERED".equals(t.state))return;
-        t.state="CONNECTED";t.updated=now;forward(online.get(t.sender),type,from,to,id,n.get("payload"));
+        if(t==null||!t.party(from)||!t.other(from).equals(to)||!"OFFERED".equals(t.state)||!to.equals(t.offerer))return;
+        t.state="CONNECTED";t.updated=now;forward(online.get(to),type,from,to,id,n.get("payload"));
       }
       case "ice" -> {
         if(t==null||!t.party(from)||!t.other(from).equals(to)||!(Set.of("ACCEPTED","OFFERED","CONNECTED").contains(t.state)))return;
+        t.updated=now;forward(online.get(to),type,from,to,id,n.get("payload"));
+      }
+      case "share" -> {
+        if(t==null||!t.media||!t.party(from)||!t.other(from).equals(to)||!Set.of("CONNECTED","OFFERED").contains(t.state))return;
         t.updated=now;forward(online.get(to),type,from,to,id,n.get("payload"));
       }
       case "cancel" -> {
@@ -119,7 +125,7 @@ public class SignalHandler extends TextWebSocketHandler {
   }
   private String safeName(String input){if(input==null)return "Private user";String c=input.replaceAll("[\\p{Cntrl}]","").trim().replaceAll("\\s+"," ");if(c.isBlank())return "Private user";return c.substring(0,Math.min(32,c.length()));}
   @Override public void afterConnectionClosed(WebSocketSession s,CloseStatus status)throws Exception{
-    String id=socketUser.remove(s.getId()); socketToken.remove(s.getId()); if(id!=null){online.remove(id,s);if(!online.containsKey(id))displayNames.remove(id);} broadcastPresence();
+    String id=socketUser.remove(s.getId()); socketToken.remove(s.getId()); if(id!=null){online.remove(id,s);if(!online.containsKey(id)){displayNames.remove(id); for(Transfer t:transfers.values())if(t.party(id) && !"CLOSED".equals(t.state)){t.state="CLOSED";forward(online.get(t.other(id)),"cancel",id,t.other(id),t.id,null);}}} broadcastPresence();
   }
   @Override public void handleTransportError(WebSocketSession s,Throwable ex)throws Exception{if(s.isOpen())s.close(CloseStatus.SERVER_ERROR);}
 }

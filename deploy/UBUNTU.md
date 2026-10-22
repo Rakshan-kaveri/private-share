@@ -1,6 +1,6 @@
 # Private Share — Ubuntu deployment (`share.rakzu.xyz`)
 
-This is an improved security iteration, not an externally audited product. It keeps the frontend bound to `127.0.0.1:8187`, so it does not open a public host port. It does not use a file upload endpoint or store file bytes on the application server.
+This is an improved security iteration, not an externally audited product. It keeps the frontend bound to `127.0.0.1:8188`, so it does not open a public host port. It does not use a file upload endpoint or store file bytes on the application server.
 
 ## 1. Preserve the existing installation
 
@@ -39,7 +39,7 @@ cd /opt/private-share
 sudo docker compose config
 sudo docker compose up -d --build
 sudo docker compose ps
-curl -I http://127.0.0.1:8187
+curl -I http://127.0.0.1:8188
 sudo docker compose logs --tail=100 backend frontend
 ```
 
@@ -54,7 +54,7 @@ Use the existing Cloudflare account and tunnel; do not replace or reconfigure ot
    - Subdomain: `share`
    - Domain: `rakzu.xyz`
    - Service type: HTTP
-   - URL: `http://127.0.0.1:8187` if `cloudflared` runs directly on the Ubuntu host.
+   - URL: `http://127.0.0.1:8188` if `cloudflared` runs directly on the Ubuntu host.
 3. If `cloudflared` runs in a container, `127.0.0.1` means the tunnel container itself. Follow the existing tunnel deployment's host access pattern; do not assume host loopback is visible inside a container.
 4. Cloudflare Tunnel supports WebSocket proxying, which this application needs for signalling. Do not expose backend port 8081 or PostgreSQL publicly.
 5. Confirm `https://share.rakzu.xyz` loads and `/ws` connects before testing sign-in.
@@ -88,7 +88,7 @@ sudo docker compose logs --tail=100 backend frontend
 sudo ss -lntup
 ```
 
-Confirm the frontend is bound only to `127.0.0.1:8187`, and backend port 8081 is only exposed on the internal Compose network. Keep logs free of file contents, keys and bearer tokens. Apply Cloudflare edge rate limiting to `/api/auth/google` and monitor abuse without recording sensitive payloads.
+Confirm the frontend is bound only to `127.0.0.1:8188`, and backend port 8081 is only exposed on the internal Compose network. Keep logs free of file contents, keys and bearer tokens. Apply Cloudflare edge rate limiting to `/api/auth/google` and monitor abuse without recording sensitive payloads.
 
 This code has not received an independent penetration test. Treat it as a hardened test build, not a guarantee of production security.
 
