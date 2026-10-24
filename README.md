@@ -1,33 +1,31 @@
-# Private Share
+# Share
 
-Responsive browser-based file sharing using Google sign-in, browser-side AES-256-GCM encryption, ECDH P-256 key agreement, ECDSA-signed transfer keys and a signed SHA-256 file manifest. The application server coordinates signalling and does not provide file upload/download endpoints. The UI uses a premium black-and-champagne visual theme. Peer keys are automatically pinned locally on first use; changed keys are blocked. WebRTC prefers direct peer-to-peer transport.
+Share is a browser based workspace for encrypted file transfer, voice and video calls, and screen sharing. It evolves the supplied Private Share V5 project. The tabs are **Files**, **Screen**, **Voice**, **Video**, and **How it works**. The existing React/Vite, Spring Boot, WebSocket, WebRTC, Docker Compose, and Google sign-in structure is retained.
 
-## Important deployment facts
+## What is implemented
 
-- Intended public hostname: `https://share.rakzu.xyz`.
-- Ubuntu host port: `127.0.0.1:8187` only. Publish through the existing Cloudflare Tunnel; do not open port 8187 to the Internet.
-- `APP_ORIGIN` must be the exact browser origin and must match the Google OAuth JavaScript origin.
-- `ICE_SERVERS_JSON` is for public ICE server configuration only. Never expose a permanent TURN secret in the frontend bundle. A separate TURN provider/VPS with short-lived credentials is required for reliable global connectivity through restrictive networks.
-- Current maximum file size: 256 MiB; receive-side data is buffered in memory.
-- Peer identity prompts have been replaced with local trust-on-first-use (TOFU): the first valid peer signing key is pinned in this browser, and later key changes fail closed. This automates normal use and helps detect identity-key changes, but first contact is not independently authenticated against a malicious signalling server. For high-assurance first-contact verification, use an authenticated account-to-key directory or out-of-band verification. Clearing browser site data or using another browser/device resets local trust.
+- File transfer: existing AES-256-GCM chunk encryption, signed ECDH exchange, signed SHA-256 manifest, local first-use identity pinning, and WebRTC data channel. Limit: 256 MiB, buffered by the receiver in memory.
+- Calls: explicit invitation and acceptance; microphone/camera capture, mute and camera toggles, elapsed time, device selectors (selection applies to the next call), network state, and hangup.
+- Screen: native browser picker through `getDisplayMedia`, optional captured audio if available, preview, remote playback, native stop detection, and screen sharing added to an active voice or video call using the same peer connection with renegotiation.
+- Signalling: authenticated WebSocket messages are bound to server-side session participants and session state. Offer and answer SDP is signed by the locally pinned identity key. Media uses WebRTC DTLS-SRTP. The application server does not handle media or file bytes.
 
-## Run
+## Build and run
+
+Copy `.env.example` to `.env`, set `GOOGLE_CLIENT_ID`, `APP_ORIGIN`, and optional TURN settings. Keep `.env` private.
 
 ```bash
-cp .env.example .env
-chmod 600 .env
-# Set GOOGLE_CLIENT_ID and APP_ORIGIN in .env
-sudo docker compose config
-sudo docker compose up -d --build
+cd frontend && npm ci && npm run build
+cd ../backend && mvn test && mvn package
+cd .. && docker compose config && docker compose up -d --build
 curl -I http://127.0.0.1:8187
 ```
 
-Detailed deployment steps are in `deploy/UBUNTU.md`. This project has not undergone an independent security audit or penetration test; do not describe it as foolproof or audited.
+The Compose frontend port is bound to loopback. Put a TLS reverse proxy or the existing tunnel in front of it. `APP_ORIGIN` must exactly equal the browser origin and be registered as the Google OAuth JavaScript origin. Enable the optional `turn` profile only after configuring a publicly reachable TURN server and opening its relay ports; see `deploy/V4-GLOBAL-TURN.md`.
 
+## Current verification and limitations
 
-## V4 global connectivity
-See `VERSION-4-CHANGES.md` and `deploy/V4-GLOBAL-TURN.md`. TURN needs a separate public IP/host; Cloudflare Tunnel alone is not TURN. Identity pinning remains TOFU and has not been independently audited.
+The frontend production build passed here. This workspace has no Maven or Docker executable, so backend tests/compilation and Compose validation were not run. Two-device browser verification, OAuth, transfer integrity, camera and screen permissions, TURN fallback, and production deployment remain to be tested. See `deploy/ACCEPTANCE.md` for exact manual cases.
 
+Identity pinning is trust on first use (TOFU). It detects a changed key after first contact, but a malicious signalling service could substitute a key on first contact. Browser storage reset loses pins. No independent security audit or penetration test has been performed. WebRTC encrypts transport; there is no independent insertable-stream media E2EE. Google tokens and signalling metadata are handled by the server. Do not claim the platform is fully audited or immune to first-contact impersonation.
 
-## V5 update
-V5 adds a responsive Security tab explaining the transfer flow, CIA (confidentiality, integrity, availability), server metadata, no-file-storage design, and TURN trade-offs. Read `VERSION-5-CHANGES.md` and `deploy/V5-VALIDATION.md` before deployment. The code is not independently audited; build and run the acceptance checklist before public use.
+See `deploy/CALL-REPAIR.md` for the current call diagnosis, test limits, and rollback. See `docs/SECURITY-REVIEW.md` for corrected issues, untested paths and residual risks. See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/BROWSER-COMPATIBILITY.md`, `deploy/HTTPS.md`, and `CHANGELOG.md`.

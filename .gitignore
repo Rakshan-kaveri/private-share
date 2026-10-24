@@ -1,8 +1,18 @@
-.env
+﻿# Dependencies and build output
 node_modules/
 dist/
 target/
+build/
+coverage/
+**/node_modules/
+**/dist/
+**/target/
+**/build/
+**/coverage/
+
+# OS files
 .DS_Store
+Thumbs.db
 
 # Secrets and environment files
 .env
@@ -13,13 +23,6 @@ target/
 **/.env.*
 !.env.example
 !.env.sample
-
-# Dependencies and generated files
-**/node_modules/
-**/target/
-**/dist/
-**/build/
-**/coverage/
 
 # Private keys and certificates
 *.pem
