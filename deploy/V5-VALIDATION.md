@@ -9,7 +9,7 @@ sudo docker compose build --no-cache
 sudo docker compose up -d
 sudo docker compose ps -a
 sudo docker compose logs --tail=150 frontend backend
-curl -I http://127.0.0.1:8188
+curl -I http://127.0.0.1:8187
 ```
 
 Do not proceed if the build fails, either container exits, Google sign-in fails, or the local curl does not return an HTTP response. Keep the existing deployment and `.env` backup until the new one passes.

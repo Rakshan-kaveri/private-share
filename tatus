@@ -1,0 +1,35 @@
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'VERSION-3-CHANGES.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'VERSION-4-CHANGES.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'VERSION-5-CHANGES.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/Dockerfile', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/pom.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/java/com/privateshare/PrivateShareApplication.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/java/com/privateshare/auth/AuthController.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/java/com/privateshare/auth/IceConfigController.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/java/com/privateshare/signal/SignalConfig.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/java/com/privateshare/signal/SignalHandler.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/main/resources/application.properties', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'compose.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'deploy/UBUNTU.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'deploy/V4-GLOBAL-TURN.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'deploy/V5-VALIDATION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/Dockerfile', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/nginx.conf', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/main.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/style.css', LF will be replaced by CRLF the next time Git touches it
+ .gitignore                                         | 26 [31m--------[m
+ README.md                                          | 38 [32m++++++[m[31m------[m
+ .../java/com/privateshare/auth/AuthController.java |  3 [32m+[m[31m-[m
+ .../com/privateshare/signal/SignalHandler.java     | 70 [32m+++++++++++++++[m[31m-------[m
+ compose.yaml                                       |  2 [32m+[m[31m-[m
+ deploy/V5-VALIDATION.md                            |  2 [32m+[m[31m-[m
+ frontend/index.html                                |  2 [32m+[m[31m-[m
+ frontend/nginx.conf                                |  4 [32m+[m[31m-[m
+ frontend/src/main.jsx                              | 45 [32m++++++++[m[31m------[m
+ frontend/src/style.css                             | 36 [32m++++++++++[m[31m-[m
+ 10 files changed, 134 insertions(+), 94 deletions(-)

@@ -34,8 +34,9 @@ public class AuthController {
       return token;
     }
     public static Session get(String token) {
+      if (token == null || token.isBlank()) return null;
       Session s = SESSIONS.get(token);
-      if (s == null || s.expiresAt() < Instant.now().getEpochSecond()) { if (token != null) SESSIONS.remove(token); return null; }
+      if (s == null || s.expiresAt() <= Instant.now().getEpochSecond()) { if (token != null) SESSIONS.remove(token); return null; }
       return s;
     }
   }
