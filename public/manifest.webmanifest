@@ -1,0 +1,10 @@
+{
+  "name": "Private Share",
+  "short_name": "Private Share",
+  "description": "Encrypted calls, screen sharing and file transfer between browsers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141311",
+  "theme_color": "#141311",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

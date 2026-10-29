@@ -1,0 +1,14 @@
+{
+  "name": "private-share",
+  "version": "6.1.0",
+  "private": true,
+  "description": "Encrypted voice, video, screen sharing and file transfer over WebRTC. The server only does sign-in and signalling.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "DEV_LOGIN=true PORT=8099 node server.js",
+    "test": "node tests/e2e.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": { "playwright": "^1.50.0" }
+}

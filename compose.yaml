@@ -1,0 +1,40 @@
+services:
+  app:
+    build: .
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      APP_ORIGIN: ${APP_ORIGIN:-https://share.rakzu.xyz}
+      ICE_SERVERS_JSON: ${ICE_SERVERS_JSON:-[]}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_PORT: ${TURN_PORT:-3478}
+      TURN_TLS_PORT: ${TURN_TLS_PORT:-0}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+      DEV_LOGIN: ${DEV_LOGIN:-false}
+    ports:
+      # Loopback only. Publish it through Cloudflare Tunnel, never directly.
+      - "127.0.0.1:${HOST_PORT:-8188}:8080"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  # TURN relay for networks that block direct connections (common on mobile data / CGNAT).
+  # Start with: docker compose --profile turn up -d coturn
+  # Needs a public IP and inbound UDP+TCP 3478 and UDP 49160-49200. Cloudflare Tunnel cannot carry TURN.
+  coturn:
+    image: coturn/coturn:4.6.3
+    network_mode: host
+    command: >-
+      -n --log-file=stdout --fingerprint --lt-cred-mech --use-auth-secret
+      --static-auth-secret=${TURN_SHARED_SECRET:-}
+      --realm=${TURN_REALM:-share.rakzu.xyz} --listening-port=3478
+      --min-port=49160 --max-port=49200 --no-multicast-peers
+      --no-cli --no-tls --no-dtls --stale-nonce=600
+      --external-ip=${TURN_PUBLIC_IP:-}
+      --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255
+      --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255
+      --denied-peer-ip=169.254.0.0-169.254.255.255 --denied-peer-ip=100.64.0.0-100.127.255.255
+      --denied-peer-ip=0.0.0.0-0.255.255.255 --no-tcp-relay
+      --user-quota=12 --total-quota=200 --max-bps=4000000
+    restart: unless-stopped
+    profiles: [turn]
