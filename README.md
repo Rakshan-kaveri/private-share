@@ -1,134 +1,153 @@
-# Private Share v6.1
+# Private Share
 
-## New in 6.1
-- **Send files without a call.** "Send files" opens a transfer screen. No microphone, no call screen, and no audio channels are even created.
-- **Screen sharing with sound.** Chrome/Edge on a computer share tab audio (and full system audio on Windows) when "Share audio" is ticked in the picker. It plays on the viewer's side through its own channel.
-- **Viewer tools.** Rotate the shared screen 90° at a time, switch fit/fill, and go full screen. On Android, full screen also turns the phone to landscape automatically.
-- **Connection steps.** Every call shows each step (accepted → keys verified → route found → connected). If a call can't connect, the message names the actual cause: their device never answered, this device can't reach the relay, their device can't reach the relay, no relay is set up, or WebRTC is blocked by a VPN or extension.
-- **Fresh relay credentials for every call.** A relay set up after someone signed in now gets used straight away.
-- **Redesigned sign-in page.** Mobile layout fixes. Security: an invite rate limit, a cap on files per session, and extra security headers.
-- **Updating on the VM:** unzip over your existing folder (`unzip -o`). The zip has no `.env`, so your settings and secret stay as they are. Then run `sudo docker compose up -d --build app`.
+**Encrypted voice calls, video calls, screen sharing and file transfer between two browsers, on phone or PC.**
+The server only signs people in and introduces the two devices; everything you say, show and send travels device to device.
 
-Encrypted **voice calls, video calls, screen sharing and file transfer** between two browsers, on phone or PC.
-The server only signs people in and passes connection messages between them. Audio, video, screens and
-files go device to device over WebRTC and never touch the server.
+![Node.js 20+](https://img.shields.io/badge/node-%E2%89%A5%2020-c8a35b?style=flat-square)
+![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-c8a35b?style=flat-square)
+![End-to-end tests: 27 passing](https://img.shields.io/badge/e2e%20tests-27%20passing-c8a35b?style=flat-square)
+![WebRTC](https://img.shields.io/badge/WebRTC-DTLS--SRTP-c8a35b?style=flat-square)
 
-## What changed from v5
+<img src="docs/screenshots/hero.png" alt="A shared screen watched on a laptop and on a phone, with the call header showing End-to-end encrypted and a safety code">
 
-| v5 | v6 |
-|---|---|
-| File transfer only | File transfer **+ voice call + video call + screen sharing** |
-| Spring Boot backend + React/Vite frontend + nginx (3 builds, `"latest"` npm versions) | One Node.js server with **zero npm dependencies**, plain-JS frontend, **no build step** |
-| `Permissions-Policy` blocked camera and microphone | Camera, microphone and screen capture allowed for this site only |
-| Spring's default 8 KB WebSocket buffer (call descriptions are larger) | 64 KB messages, keep-alive pings (Cloudflare closes idle sockets after ~100 s) |
-| Google client ID and ICE servers baked in at build time | Read at runtime from `.env`, so a restart applies changes |
-| A changed peer key blocked that person forever | Clear warning with "Trust and connect" / "End call" |
-| Files held fully in memory and hashed in one go (256 MB cap) | Chunk-by-chunk hashing, Blob-backed receive, 1 GB per file |
+## Features
 
-Your `.env` from v5 works unchanged. New optional keys: `HOST_PORT`, `TURN_PORT`, `TURN_TLS_PORT`, `DEV_LOGIN`.
+| | |
+| --- | --- |
+| **Voice and video calls** | Phone to laptop in any direction. Mute, camera on/off and front/back switch, and a voice call becomes a video call without redialling. |
+| **Screen sharing with sound** | Share a tab, a window or the whole screen, including its audio in Chrome and Edge. Viewers on any device can rotate, fill or go full screen. |
+| **File transfer** | Send files up to 1 GB each, with or without a call. Every file is encrypted, verified on arrival and only then offered for saving. |
+| **End-to-end encryption** | Keys are created and kept in each browser. A 12-digit safety code lets two people confirm out loud that nobody is in the middle. |
+| **No storage** | No database, no uploads and no message history. The server keeps sign-ins and online status in memory and nothing else. |
 
-## Run it
+## Screenshots
 
-```bash
-cp .env.example .env      # skip if you are keeping your existing .env
-chmod 600 .env
-nano .env                 # GOOGLE_CLIENT_ID and APP_ORIGIN at minimum
-sudo docker compose up -d --build
-curl -s http://127.0.0.1:8188/api/health     # {"ok":true}
+> From a local test run with three browsers (two desktops, one phone). The camera feeds and the shared screen are generated test content. The sign-in page shows the local test sign-in; the live site shows "Continue with Google".
+
+**Sign in and choose someone**
+
+| Desktop | Phone |
+| --- | --- |
+| <img src="docs/screenshots/01-sign-in.png" width="560" alt="Sign-in page"> | <img src="docs/screenshots/01b-sign-in-phone.png" width="200" alt="Sign-in page on a phone"> |
+| <img src="docs/screenshots/02-home.png" width="560" alt="People online, with voice, video, screen and file options"> | <img src="docs/screenshots/02b-contact-phone.png" width="200" alt="Contact options on a phone"> |
+
+**Video call**, end-to-end encrypted, with a safety code both people can compare
+
+<img src="docs/screenshots/03-incoming-call.png" width="49%" alt="Incoming video call"> <img src="docs/screenshots/05-video-call.png" width="49%" alt="Video call in progress">
+<img src="docs/screenshots/06-safety-code.png" width="49%" alt="Safety code check">
+
+**Screen sharing with sound.** The viewer can rotate, fill or go full screen.
+
+<img src="docs/screenshots/07-screen-share-viewer.png" width="49%" alt="Viewer watching a shared screen"> <img src="docs/screenshots/07b-screen-share-sharer.png" width="49%" alt="Sharer's view during a screen share">
+
+<img src="docs/screenshots/08-incoming-screen-phone.png" width="24%" alt="Screen share request on a phone"> <img src="docs/screenshots/09-screen-phone.png" width="24%" alt="Shared screen on a phone"> <img src="docs/screenshots/10-screen-phone-rotated.png" width="24%" alt="Shared screen rotated on a phone">
+
+**Send files**, no call needed
+
+<img src="docs/screenshots/11-incoming-files.png" width="49%" alt="Incoming files request"> <img src="docs/screenshots/12-file-transfer.png" width="49%" alt="Receiving files with progress and Save buttons">
+<img src="docs/screenshots/12b-file-transfer-sender.png" width="49%" alt="Sender's view of a file transfer"> <img src="docs/screenshots/13-how-it-stays-private.png" width="49%" alt="The in-app explanation of how it stays private">
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Browser A<br/>keys + encryption"] -- "sign-in and signed setup<br/>(HTTPS / WSS)" --> CF["Cloudflare Tunnel"]
+    B["Browser B<br/>keys + encryption"] -- "sign-in and signed setup<br/>(HTTPS / WSS)" --> CF
+    CF --> S["Signalling server<br/>Node.js, stores nothing"]
+    A <== "media and files, end-to-end encrypted" ==> B
+    A -. "only if a direct route is blocked" .-> T["TURN relay<br/>forwards ciphertext"]
+    T -.-> B
 ```
 
-Point the Cloudflare Tunnel public hostname `share.rakzu.xyz` at `http://127.0.0.1:8188` (HTTP service).
-WebSockets pass through Cloudflare Tunnel without extra settings.
+1. **Sign in.** Google confirms who you are. The server issues a short-lived session and lists who is online.
+2. **Exchange keys.** Each call creates fresh ECDH P-256 keys. Every key and every connection description is signed by a device key that never leaves the browser, so the server can relay them but can't swap them.
+3. **Connect.** WebRTC finds a direct route (or uses the TURN relay) and runs a DTLS handshake whose fingerprint must match the signed description.
+4. **Talk, show, send.** Audio, video and screen travel over DTLS-SRTP. Files get a second layer: a per-file AES-256-GCM key, per-chunk authentication and a signed whole-file fingerprint.
+5. **Hang up.** Cameras and microphones stop, the connection closes and its keys are discarded.
 
-Google Cloud → APIs & Services → Credentials → your Web client → **Authorized JavaScript origins**:
-`https://share.rakzu.xyz` (exactly, no trailing slash). While the OAuth app is in Testing mode, add each person as a test user.
+## Security
 
-Without Docker: `node server.js` (Node 20 or newer). It reads the same variables from the environment.
+| Layer | Protection |
+| --- | --- |
+| Sign-in | Google ID token checked on the server: RS256 signature, audience, issuer, expiry and verified email. Sessions expire after 2 h idle or 24 h. |
+| Device identity | ECDSA P-256 key per browser; the private key is non-extractable and stays in IndexedDB. |
+| Key exchange | Fresh ECDH P-256 per call, then HKDF-SHA-256. Key bundles are signed by the device key. |
+| Media | Every SDP, including its DTLS fingerprint, is signed and verified before use. Audio, video and screen use DTLS-SRTP. |
+| Files | AES-256-GCM per file. Additional data binds each chunk to its call, file, index and count. A signed manifest covers a SHA-256 hash list; any failed check discards the file. |
+| Trust | Keys are pinned on first contact, and a changed key raises a warning. The safety code closes the first-contact gap. |
+| Server | Origin-checked WebSocket, per-call state machine, rate limits, size limits, strict CSP, read-only non-root container with all capabilities dropped. |
+| Relay | Credentials derived with HMAC, expiring after 12 h. coturn is blocked from private networks and the cloud metadata address and capped at 4 Mbit/s per session. |
 
-### Try it on your LAN without Google
+**Known limits.** The first call with someone trusts the key it sees until the safety code is compared. The client code comes from the same server, as in every browser-based end-to-end scheme. The server sees routing metadata (who is online, who calls whom). This project has **not** had an independent security audit. See [SECURITY.md](SECURITY.md) to report a problem.
+
+## Quick start (local)
+
+Needs Node.js 20 or newer. There are no packages to install.
 
 ```bash
+git clone https://github.com/Rakshan-kaveri/private-share.git
+cd private-share
 DEV_LOGIN=true PORT=8099 node server.js
 ```
 
-Open `http://localhost:8099` in two browser windows (use a private window for the second) and sign in with any name.
-Phones on the LAN need HTTPS for the camera and microphone, so use the tunnel for phone testing.
-**Never set `DEV_LOGIN=true` on the public site.** Anyone could sign in with any name.
+Open http://localhost:8099 in two windows (make the second a private window) and sign in with any name.
+`DEV_LOGIN` turns on a name-only test sign-in. **Never enable it on a public server.**
 
-## TURN: needed for many phone calls
+## Deploy
 
-**On Google Cloud:** follow `deploy/GOOGLE-CLOUD.md` and run `bash deploy/gcp-setup.sh`. It configures everything except the firewall rule, and prints the exact command for that.
+```bash
+cp .env.example .env && chmod 600 .env
+nano .env                                          # GOOGLE_CLIENT_ID and APP_ORIGIN at minimum
+sudo docker compose up -d --build                  # the app, on 127.0.0.1 only
+sudo docker compose --profile turn up -d coturn    # optional TURN relay
+```
 
-WebRTC first tries a direct path. That fails when one side is behind carrier-grade NAT (common on Jio/Airtel/Vi
-mobile data) or strict office/college Wi-Fi. The call then shows *"Couldn't connect… needs a TURN relay"*.
-A TURN relay fixes this. It forwards packets that stay encrypted end to end, so it can't see the call or the files.
+- **HTTPS:** publish the app through Cloudflare Tunnel (or any reverse proxy that passes WebSockets). Cameras and microphones need HTTPS.
+- **Google sign-in:** add your exact site origin under *Authorized JavaScript origins* for the OAuth web client.
+- **TURN relay:** needed when one side is on mobile data behind carrier-grade NAT or on strict Wi-Fi. It needs a public IP and inbound UDP/TCP 3478 plus UDP 49160–49200. Cloudflare Tunnel can't carry it.
+- **Google Cloud:** [`deploy/GOOGLE-CLOUD.md`](deploy/GOOGLE-CLOUD.md) and `bash deploy/gcp-setup.sh` set up the app and the relay on one VM. The script also prints the firewall commands.
 
-Cloudflare Tunnel **cannot** carry TURN. You need a machine with a public IP (a small VPS is enough):
+In the app, the lock menu's **Check relay** button confirms the relay is reachable.
 
-1. DNS `turn.share.rakzu.xyz` → the VPS public IP, **DNS only** (grey cloud, not proxied).
-2. Open inbound UDP+TCP **3478** and UDP **49160–49200**.
-3. In `.env`: `TURN_HOST`, `TURN_REALM`, `TURN_PUBLIC_IP` and `TURN_SHARED_SECRET` (`openssl rand -hex 32`).
-4. On the TURN host: `sudo docker compose --profile turn up -d coturn` (or install coturn with the same flags).
-5. Restart the app. Click the lock icon → **Check relay** to confirm. In a call, the header shows **Relayed (still encrypted)** when TURN is in use.
+### Configuration
 
-The app issues TURN usernames and passwords that expire after 12 hours, derived from the shared secret.
-The secret itself never reaches the browser.
-
-## How the four features work
-
-All four run over **one** WebRTC connection per call. The camera, screen and files can be switched on and off
-mid-call without redialling. A voice call becomes a video call when either person taps *Camera*.
-
-- **Voice / video:** Opus audio with echo cancellation, camera up to 720p, a front/back switch on phones, mute,
-  and live state sync (the other side sees when you mute or turn the camera off).
-- **Screen sharing:** start it from the list or during a call. The viewer gets your screen full-stage with your camera in the corner,
-  plus a full-screen button. Any device can **watch** a shared screen. Most phone browsers (iOS Safari, Chrome on Android)
-  **can't share** their own screen; the button is hidden there.
-- **Files:** pick or drag-and-drop several files, in both directions, during any call or via *Send files*.
-  The receiver accepts or declines each one, and gets progress, speed and a *Save* button. Image files show a preview.
-
-## Security model
-
-| Layer | What protects it |
-|---|---|
-| Sign-in | Google ID token checked on the server (RS256 signature against Google's keys, audience, issuer, expiry, verified email). Login tokens expire after 2 h idle or 24 h total. |
-| Device identity | ECDSA P-256 key per browser, private key non-extractable in IndexedDB. |
-| Key exchange | Fresh ECDH P-256 keys per call → HKDF-SHA-256. The key bundle is signed by the device key. |
-| Media path | Every SDP (which carries the DTLS fingerprint) is **signed** and checked before use, so the signalling server can't put itself in the middle. Audio/video: DTLS-SRTP. |
-| Files | Extra AES-256-GCM layer: one key per file, per-chunk authentication (AAD binds call, file, index, count), a signed manifest over a SHA-256 hash list. Anything that fails a check is discarded. |
-| Trust | Keys are pinned on first contact (TOFU). The **safety code** in the call header lets two people confirm out loud that nobody is in the middle, and *It matches* marks the contact as verified. |
-| Server | Origin-checked WebSocket, per-call state machine (only the two parties, in the right order), rate limits, size limits, CSP, `frame-ancestors 'none'`, read-only container, all capabilities dropped. |
-
-Honest limits: the first call with someone trusts the key it sees until you compare the safety code. Clearing
-site data creates a new device key, and the other person gets a warning. Received files stay in the tab until saved.
-This has not had an independent security audit. Don't advertise it as audited.
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `GOOGLE_CLIENT_ID` | Google OAuth web client ID (public) | `1234-abc.apps.googleusercontent.com` |
+| `APP_ORIGIN` | Exact public origin; WebSocket connections must come from it | `https://share.example.com` |
+| `HOST_PORT` | Loopback port the reverse proxy points at | `8188` |
+| `TURN_HOST` | Relay hostname or public IP given to browsers | `turn.example.com` |
+| `TURN_PUBLIC_IP` | `public/private` address pair for coturn behind 1:1 NAT | `203.0.113.5/10.0.0.2` |
+| `TURN_SHARED_SECRET` | Shared by the app and coturn; generate with `openssl rand -hex 32` | — |
+| `TURN_PORT`, `TURN_TLS_PORT` | Relay ports (`TURN_TLS_PORT=0` turns TLS off) | `3478`, `0` |
+| `ICE_SERVERS_JSON` | Extra STUN/TURN servers | `[]` |
+| `DEV_LOGIN` | Name-only test sign-in; keep `false` in production | `false` |
 
 ## Tests
 
-`tests/e2e.mjs` drives two real Chromium browsers (fake camera and microphone) through the server and checks 27 things:
-video both ways, live audio, matching safety codes, camera off/on, screen share in and out, a 24 MB file with
-identical SHA-256, reverse transfer, decline, voice call, mute, voice→video upgrade, declined call, multi-file
-*Send files*, received files after hang-up, a phone-sized screen viewer, and the key-change warning.
+[`tests/e2e.mjs`](tests/e2e.mjs) runs two real Chromium browsers (plus a phone-sized one) against the server and checks 27 things. They include: video and audio both ways, matching safety codes, camera toggling, screen sharing with sound, rotate and fill for viewers, a 24 MB file with an identical SHA-256 in both directions, declines, voice-to-video upgrade, file-only sessions with no audio, HTML in display names rendered as text, and the key-change warning.
 
 ```bash
-npm install            # installs Playwright (test only; the app itself needs nothing)
-npx playwright install chromium
+npm install && npx playwright install chromium     # test tools only
 DEV_LOGIN=true PORT=8099 node server.js &
 npm test
 ```
 
-## Files
+## Project layout
 
 ```
-server.js            HTTP, Google sign-in, TURN credentials, WebSocket signalling (no dependencies)
-public/index.html    page shell and icons
-public/css/app.css   matte black and gold theme, phone layout
-public/js/crypto.js  identity keys, signatures, ECDH/HKDF, AES-GCM, safety code
-public/js/signal.js  WebSocket client with reconnect
-public/js/call.js    the call engine: media, renegotiation, encrypted file transfer
-public/js/app.js     interface
-tests/e2e.mjs        two-browser end-to-end test
-compose.yaml         app (127.0.0.1:8188) + optional coturn profile
-deploy/gcp-setup.sh  one-shot setup on a Google Cloud VM (app + TURN)
-deploy/GOOGLE-CLOUD.md  step-by-step for Google Cloud, firewall, static IP, troubleshooting
+server.js               HTTP, Google sign-in check, TURN credentials, WebSocket signalling (no dependencies)
+public/index.html       page shell and icons
+public/css/app.css      matte black and gold theme, phone layout
+public/js/crypto.js     identity keys, signatures, ECDH/HKDF, AES-GCM, key pinning, safety code
+public/js/call.js       session engine: media, negotiation, diagnosis, encrypted file transfer
+public/js/signal.js     WebSocket client with reconnect and keep-alive
+public/js/app.js        interface and viewer tools
+tests/e2e.mjs           end-to-end browser tests
+compose.yaml            hardened app container + optional coturn relay
+deploy/                 Google Cloud guide and setup script
+docs/screenshots/       images used in this README
+legacy/v5/              the previous Spring Boot + React version, kept for reference
 ```
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed between versions.
