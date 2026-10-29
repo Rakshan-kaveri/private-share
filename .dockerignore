@@ -4,3 +4,5 @@ tests
 *.md
 deploy
 .git
+legacy
+docs
