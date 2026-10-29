@@ -48,7 +48,8 @@ fi
 
 APP_PORT=$(grep '^HOST_PORT=' .env | cut -d= -f2 || true); APP_PORT=${APP_PORT:-8188}
 PROJECT=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
-OLD=$($SUDO docker ps --filter "publish=$APP_PORT" --format '{{.Names}} {{.Label "com.docker.compose.project"}}' 2>/dev/null | awk -v p="$PROJECT" '$2 != p {print $1}' || true)
+# Match the HOST port in the Ports column ("127.0.0.1:8188->..."); docker's publish= filter matches the container port.
+OLD=$($SUDO docker ps --format '{{.Names}}|{{.Label "com.docker.compose.project"}}|{{.Ports}}' 2>/dev/null | awk -F'|' -v p="$PROJECT" -v port=":$APP_PORT->" 'index($3, port) && $2 != p {print $1}' || true)
 if [ -n "$OLD" ]; then
   say "Stopping the old version that is using port $APP_PORT: $OLD"
   # shellcheck disable=SC2086
